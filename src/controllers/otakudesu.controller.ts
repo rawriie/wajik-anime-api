@@ -1,12 +1,40 @@
 import type { Request, Response, NextFunction } from "express";
+import type { IncomingMessage } from "node:http";
+import https from "node:https";
 import otakudesuScraper from "@scrapers/otakudesu.scraper.js";
 import otakudesuParser from "@parsers/otakudesu.parser.js";
 import otakudesuConfig from "@configs/otakudesu.config.js";
 import otakudesuSchema from "@schemas/otakudesu.schema.js";
 import setPayload from "@helpers/setPayload.js";
+import { userAgent } from "@helpers/getHTML.js";
 import * as v from "valibot";
 
 const { baseUrl } = otakudesuConfig;
+
+async function fetchWithRedirects(
+  url: string,
+  headers: Record<string, string>,
+  redirectsLeft = 5
+): Promise<IncomingMessage> {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+
+    const request = https.request(parsed, { method: "GET", headers }, (response) => {
+      const location = response.headers.location;
+
+      if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && location && redirectsLeft > 0) {
+        response.resume();
+        fetchWithRedirects(new URL(location, parsed).href, headers, redirectsLeft - 1).then(resolve, reject);
+        return;
+      }
+
+      resolve(response);
+    });
+
+    request.on("error", reject);
+    request.end();
+  });
+}
 
 const otakudesuController = {
   async getRoot(req: Request, res: Response, next: NextFunction) {
@@ -157,6 +185,48 @@ const otakudesuController = {
           },
         ],
         queryParams: [],
+      },
+      {
+        method: "GET",
+        path: "/otakudesu/source",
+        description: "URL video yang bisa diputar dari URL embed apapun",
+        pathParams: [],
+        queryParams: [
+          {
+            key: "url",
+            value: "string",
+            defaultValue: null,
+            required: true,
+          },
+        ],
+      },
+      {
+        method: "GET",
+        path: "/otakudesu/embed",
+        description: "Proxy iframe halaman video desustream tanpa frame-blocking",
+        pathParams: [],
+        queryParams: [
+          {
+            key: "url",
+            value: "string",
+            defaultValue: null,
+            required: true,
+          },
+        ],
+      },
+      {
+        method: "GET",
+        path: "/otakudesu/embed-check",
+        description: "Cek apakah halaman desustream bisa di-iframe langsung",
+        pathParams: [],
+        queryParams: [
+          {
+            key: "url",
+            value: "string",
+            defaultValue: null,
+            required: true,
+          },
+        ],
       },
     ];
 
@@ -366,6 +436,102 @@ const otakudesuController = {
         return;
       }
 
+      next(error);
+    }
+  },
+
+  async getSource(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { url } = v.parse(otakudesuSchema.query.source, req.query);
+      const source = await otakudesuScraper.scrapeSource(url);
+      const payload = setPayload(res, {
+        data: { source },
+      });
+
+      res.json(payload);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getEmbedCheck(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { url } = v.parse(otakudesuSchema.query.source, req.query);
+
+      const { embeddable } = await otakudesuScraper.scrapeEmbeddability(url);
+      const payload = setPayload(res, {
+        data: { embeddable },
+      });
+
+      res.json(payload);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getEmbed(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { url } = v.parse(otakudesuSchema.query.source, req.query);
+
+      const html = await otakudesuScraper.scrapeEmbedPage(url);
+      const proxied = html.replace(
+        /(<source\s+src=")(https:\/\/[^"]*\.googlevideo\.com[^"]*)/gi,
+        (_match, prefix: string, sourceUrl: string) =>
+          `${prefix}/otakudesu/media?url=${encodeURIComponent(sourceUrl)}&ref=${encodeURIComponent(url)}`
+      );
+
+      res
+        .type("html")
+        .setHeader("Content-Security-Policy", "frame-ancestors *")
+        .send(proxied);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getMedia(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { url } = v.parse(otakudesuSchema.query.source, req.query);
+
+      const target = new URL(url);
+
+      if (!/googlevideo\.com$/i.test(target.hostname)) {
+        res.status(400).send(setPayload(res, { message: "invalid source" }));
+        return;
+      }
+
+      const headers: Record<string, string> = { "User-Agent": userAgent };
+
+      const ref = req.query.ref;
+      if (typeof ref === "string" && ref.length > 0) headers.Referer = ref;
+
+      const range = req.headers.range;
+      if (range) headers.Range = range;
+
+      const upstream = await fetchWithRedirects(target.href, headers);
+
+      res.status(upstream.statusCode ?? 500);
+
+      for (const header of [
+        "content-type",
+        "content-length",
+        "content-range",
+        "accept-ranges",
+        "cache-control",
+        "expires",
+        "etag",
+        "last-modified",
+      ] as const) {
+        const value = upstream.headers[header];
+        if (value !== undefined) res.setHeader(header, value);
+      }
+
+      res.setHeader("Accept-Ranges", "bytes");
+
+      upstream.on("error", () => res.end());
+      res.on("close", () => upstream.destroy());
+      upstream.pipe(res);
+    } catch (error) {
       next(error);
     }
   },

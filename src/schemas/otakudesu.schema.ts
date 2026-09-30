@@ -17,6 +17,9 @@ const otakudesuSchema = {
     searchedAnimes: v.object({
       q: v.pipe(v.string(), v.minLength(1), v.maxLength(50)),
     }),
+    source: v.object({
+      url: v.pipe(v.string(), v.url("invalid url")),
+    }),
   },
 };
 

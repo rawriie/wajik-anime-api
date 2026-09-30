@@ -16,4 +16,8 @@ otakudesuRouter.get("/anime/:animeId", serverCache(10), otakudesuController.getA
 otakudesuRouter.get("/episode/:episodeId", serverCache(10), otakudesuController.getEpisodeDetails);
 otakudesuRouter.get("/server/:serverId", serverCache(10), otakudesuController.getServerDetails);
 otakudesuRouter.post("/server/:serverId", serverCache(10), otakudesuController.getServerDetails);
+otakudesuRouter.get("/source", serverCache(10), otakudesuController.getSource);
+otakudesuRouter.get("/embed-check", serverCache(5), otakudesuController.getEmbedCheck);
+otakudesuRouter.get("/embed", otakudesuController.getEmbed);
+otakudesuRouter.get("/media", otakudesuController.getMedia);
 export default otakudesuRouter;

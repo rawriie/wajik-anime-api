@@ -45,6 +45,9 @@ app.use("/kuramanime", kuramanimeRouter);
 app.use("/samehadaku", samehadakuRouter);
 app.use("/oploverz", oploverzRouter);
 app.use(errorHandler);
-app.listen(PORT, () => {
-    console.log(`server is running on http://localhost:${PORT}`);
-});
+export default app;
+if (!process.env.VERCEL) {
+    app.listen(PORT, () => {
+        console.log(`server is running on http://localhost:${PORT}`);
+    });
+}
