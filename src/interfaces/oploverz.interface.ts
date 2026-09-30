@@ -3,7 +3,7 @@ export interface IHome {
     animeList: IPopularCard[];
   };
   latestRelease: {
-    animeList: ILatestCard[];
+    animeList: (ILatestCard | ISearchCard)[];
   };
 }
 
@@ -77,6 +77,7 @@ export interface ISearchCard {
   status: string;
   slug: string;
   href: string;
+  episode?: string;
 }
 
 export interface INavLink {

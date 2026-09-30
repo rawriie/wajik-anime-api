@@ -225,7 +225,8 @@ const oploverzController = {
   async getAnimeDetails(req: Request, res: Response, next: NextFunction) {
     try {
       const animeId = req.params.animeId;
-      const pathname = `/anime/${animeId}/`;
+      const prefix = oploverzConfig.animePrefix ?? "/anime/";
+      const pathname = `${prefix}${animeId}/`;
       const document = await oploverzScraper.scrapeDOM(pathname, baseUrl);
       const details = oploverzParser.parseAnimeDetails(document);
       const payload = setPayload(res, {

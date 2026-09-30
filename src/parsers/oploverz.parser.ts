@@ -20,6 +20,17 @@ const oploverzParser = {
       oploverzExtraParser.parseLatestCard(el)
     );
 
+    if (latestAnimeList.length === 0) {
+      const fallbackElems = document.querySelectorAll(".listupd article.bs");
+      const fallbackList: T.ISearchCard[] = fallbackElems.map((el) =>
+        oploverzExtraParser.parseSearchCard(el)
+      );
+      return {
+        popularToday: { animeList: popularAnimeList },
+        latestRelease: { animeList: fallbackList },
+      };
+    }
+
     return {
       popularToday: {
         animeList: popularAnimeList,
@@ -114,8 +125,8 @@ const oploverzParser = {
       season: getInfo("Season"),
       type: getInfo("Type"),
       rating,
-      releasedOn: getInfo("Released on"),
-      updatedOn: getInfo("Updated on"),
+      releasedOn: getInfo("Released on") || getInfo("Released"),
+      updatedOn: getInfo("Updated on") || getInfo("Updated"),
       synopsis,
       genres,
       episodeList,
@@ -124,11 +135,15 @@ const oploverzParser = {
 
   parseEpisodeDetails(document: HTMLElement): T.IEpisodeDetails {
     const streamingUrl = Src(document.querySelector("#embed_holder iframe"));
-    const episodeNumber = Attr(document.querySelector("meta[itemprop='episodeNumber']"), "content");
-    const seriesLink = document.querySelector(".year a[href*='/anime/']");
+    const episodeNumber =
+      Attr(document.querySelector("meta[itemprop='episodeNumber']"), "content") ||
+      Text(document.querySelector("h1.entry-title")).match(/Episode\s*(\d+)/i)?.[1] ||
+      "";
+    const seriesLink = document.querySelector(".year a[href*='/anime/'], .year a[href*='/series/']");
     const seriesHref = Attr(seriesLink, "href");
     const seriesName = Text(seriesLink);
-    const seriesSlug = seriesHref.split("/anime/")[1]?.replace(/\/$/, "") || "";
+    const seriesSlug =
+      seriesHref?.match(/\/(?:anime|series)\/([^/?#]+)/)?.[1] ?? "";
 
     const navElems = document.querySelectorAll(".naveps .nvs a");
     let prevEpisode: T.INavLink | null = null;

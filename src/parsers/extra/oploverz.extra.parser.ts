@@ -110,18 +110,20 @@ const oploverzExtraParser = {
     const limitEl = el.querySelector(".limit");
     const poster = Src(limitEl?.querySelector("img")).split("?")[0] || "";
     const type = Text(limitEl?.querySelector(".typez"));
-    const status = Text(limitEl?.querySelector(".epx"));
+    const episode = Text(limitEl?.querySelector(".epx"));
     const href = Attr(el.querySelector("a.tip"), "href");
-    const slug = href.split("/anime/")[1]?.replace(/\/$/, "") || "";
+    const slugMatch = href?.match(/\/(?:anime|series)\/([^/?#]+)/);
+    const slug = slugMatch?.[1] || (href?.split("/").filter(Boolean).pop() ?? "");
     const title = Text(el.querySelector("h2[itemprop='headline']"));
 
     return {
       title,
       poster,
       type,
-      status,
+      status: episode,
       slug,
       href,
+      episode,
     };
   },
 
