@@ -51,6 +51,30 @@ const oploverzParser = {
     return { sectionList };
   },
 
+  parseGenreAnimes(document: HTMLElement, genre: string, page: number): T.IGenreAnimes {
+    const animeElems = document.querySelectorAll(".listupd article.bs");
+    const animeList: T.ISearchCard[] = animeElems.map((el) =>
+      oploverzExtraParser.parseSearchCard(el)
+    );
+
+    if (animeList.length === 0) {
+      throw errorinCuy(404);
+    }
+
+    let hasNextPage = false;
+    let nextPageUrl: string | null = null;
+    document.querySelectorAll(".pagination a[href]").forEach((paginationEl) => {
+      const href = Attr(paginationEl, "href");
+      const pageMatch = href?.match(/\/page\/(\d+)\//);
+      if (pageMatch && Number(pageMatch[1]) === page + 1) {
+        hasNextPage = true;
+        nextPageUrl = href;
+      }
+    });
+
+    return { genre, currentPage: page, hasNextPage, nextPageUrl, animeList };
+  },
+
   parseSearchedAnimes(document: HTMLElement): T.ISearchCard[] {
     const animeElems = document.querySelectorAll(".listupd article.bs");
     const animeList: T.ISearchCard[] = animeElems.map((el) =>

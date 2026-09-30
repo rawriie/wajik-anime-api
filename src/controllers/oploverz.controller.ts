@@ -62,6 +62,20 @@ const oploverzController = {
       },
       {
         method: "GET",
+        path: "/oploverz/genres/{genre}",
+        description: "Daftar anime berdasarkan genre (slugs: action, romance, isekai, ...)",
+        pathParams: [
+          {
+            key: "genre",
+            value: "string",
+            defaultValue: null,
+            required: true,
+          },
+        ],
+        queryParams: [],
+      },
+      {
+        method: "GET",
         path: "/oploverz/anime",
         description: "Daftar semua anime (A-Z) dengan filter",
         pathParams: [],
@@ -180,6 +194,26 @@ const oploverzController = {
       const animeList = oploverzParser.parseSearchedAnimes(document);
       const payload = setPayload(res, {
         data: { animeList },
+      });
+
+      res.json(payload);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getGenreAnimes(req: Request, res: Response, next: NextFunction) {
+    try {
+      const genre = String(req.params.genre ?? "");
+      const rawPage = req.params.page;
+      const parsedPage = Number.parseInt(rawPage ?? "", 10);
+      const page = rawPage && Number.isFinite(parsedPage) && parsedPage > 1 ? parsedPage : 1;
+
+      const pathname = page > 1 ? `/genres/${genre}/page/${page}/` : `/genres/${genre}/`;
+      const document = await oploverzScraper.scrapeDOM(pathname, baseUrl);
+      const genreAnimes = oploverzParser.parseGenreAnimes(document, genre, page);
+      const payload = setPayload(res, {
+        data: genreAnimes,
       });
 
       res.json(payload);

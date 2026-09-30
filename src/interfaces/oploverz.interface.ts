@@ -99,6 +99,14 @@ export interface IEpisodeDetails {
   download: IFormat[];
 }
 
+export interface IGenreAnimes {
+  genre: string;
+  currentPage: number;
+  hasNextPage: boolean;
+  nextPageUrl: string | null;
+  animeList: ISearchCard[];
+}
+
 export interface IAnimeDetails {
   title: string;
   poster: string;
