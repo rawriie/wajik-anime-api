@@ -107,10 +107,20 @@ const oploverzParser = {
         let prevEpisode = null;
         let nextEpisode = null;
         navElems.forEach((navEl) => {
-            const title = Text(navEl).trim();
             const href = Attr(navEl, "href");
-            if (title.toLowerCase().includes("prev")) {
+            if (!href || href.trim() === "")
+                return;
+            // The theme marks each nav link with aria-label="prev"/"next"; the visible
+            // text is wrapped in an <i> icon plus a <span>, so matching on text alone
+            // is fragile. Fall back to the text for layouts that omit the label.
+            const label = (Attr(navEl, "aria-label") ?? "").trim().toLowerCase();
+            const title = Text(navEl).trim();
+            const text = title.toLowerCase();
+            if (label === "prev" || (!label && text.includes("prev"))) {
                 prevEpisode = { title, href };
+            }
+            else if (label === "next" || (!label && text.includes("next"))) {
+                nextEpisode = { title, href };
             }
         });
         const downloadElems = document.querySelectorAll(".mctnx .soraddlx");
@@ -125,8 +135,8 @@ const oploverzParser = {
             releasedOn: Text(document.querySelector(".year .updated")),
             hasPrevEpisode: prevEpisode !== null,
             prevEpisode,
-            hasNextEpisode: false,
-            nextEpisode: null,
+            hasNextEpisode: nextEpisode !== null,
+            nextEpisode,
             download,
         };
     },
